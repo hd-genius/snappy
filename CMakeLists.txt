@@ -155,10 +155,20 @@ int main() {
   return __builtin_expect(0, 1);
 }" HAVE_BUILTIN_EXPECT)
 
+# Check if the built-in __builtin_ctz (count trailing zeros) is available.
+# Require either a non-RISC-V target, or a RISC-V core that implements
+# the Zbb bit-manipulation extension where ctz is guaranteed.
 check_cxx_source_compiles("
-int main() {
-  return __builtin_ctzll(0);
-}" HAVE_BUILTIN_CTZ)
+#ifdef __riscv
+  #ifdef __riscv_zbb
+    int main() { return __builtin_ctzll(0); }
+  #else
+    #error \"ZBB not enabled in current config\"
+  #endif
+#else
+  int main() { return __builtin_ctzll(0); }
+#endif
+" HAVE_BUILTIN_CTZ)
 
 check_cxx_source_compiles("
 int main() {
@@ -215,6 +225,31 @@ int main() {
   vst1q_u8(dup, v2);
   return 0;
 }" SNAPPY_HAVE_NEON)
+
+#check RVV 1.0 need __riscv_ prefix
+check_cxx_source_compiles("
+  #include <riscv_vector.h>
+  #include <stdint.h>
+  #include <stddef.h>
+  int main() {
+    uint8_t val = 3, dup[8];
+    size_t vl = __riscv_vsetvl_e8m1(8);
+    vuint8m1_t v = __riscv_vmv_v_x_u8m1(val, vl);
+    return 0;
+  }" SNAPPY_RVV_1)
+
+
+#check RVV 0.7.1 not  __riscv_ prefix
+check_cxx_source_compiles("
+  #include <riscv_vector.h>
+  #include <stdint.h>
+  #include <stddef.h>
+  int main() {
+    uint8_t val = 3, dup[8];
+    size_t vl = vsetvl_e8m1(8);
+    vuint8m1_t v = vmv_v_x_u8m1(val, vl);
+    return 0;
+  }" SNAPPY_RVV_0_7)
 
 include(CheckSymbolExists)
 check_symbol_exists("mmap" "sys/mman.h" HAVE_FUNC_MMAP)
